@@ -158,24 +158,55 @@ class LLMClient:
         risk_flags = pol_res.get("risk_flags") or []
         required_approvals = pol_res.get("required_approvals") or ["Manager"]
 
-        # Determine recommendation
+        cost_usd = request.get("annual_cost_usd")
+        integrations = [str(i).lower() for i in (request.get("requested_integrations") or [])]
+        data_access = (request.get("data_access_level") or "").lower()
+
+        # Determine recommendation according to strict governance hierarchy
         if len(missing_info) > 0:
             rec = "needs_more_info"
             summary = f"Request lacks material required fields: {', '.join(missing_info)}. Clarification is required before proceeding."
             next_step = f"Ask requester for clarification on: {', '.join(missing_info)}."
+        elif "prompt_injection_detected" in risk_flags or any("injection" in str(f).lower() for f in risk_flags):
+            rec = "escalate_to_human"
+            summary = "Adversarial prompt injection pattern detected in request data. Escalated for human security investigation."
+            next_step = "Route request to Security and Procurement for manual investigation."
+        elif not budget_res.get("fits_in_budget", True) or "budget_insufficient" in risk_flags:
+            rec = "escalate_to_human"
+            summary = f"Request exceeds available department budget by ${budget_res.get('shortfall_usd', 0):,.2f}. Finance budget exception required."
+            next_step = "Route request to Finance for budget reallocation or exception approval."
+        elif vendor_res and (
+            vendor_res.get("is_unavailable")
+            or vendor_res.get("is_expired")
+            or vendor_res.get("has_conflict")
+            or "vendor_review_expired" in risk_flags
+            or "conflicting_vendor_evidence" in risk_flags
+            or "vendor_risk_unavailable" in risk_flags
+        ):
+            rec = "escalate_to_human"
+            summary = f"Vendor '{vendor_res.get('vendor_name')}' has security review issues (expired={vendor_res.get('is_expired')}, conflict={vendor_res.get('has_conflict')}, unavailable={vendor_res.get('is_unavailable')}). Human review required."
+            next_step = "Route vendor profile to Security team for manual verification."
+        elif (
+            vendor_res
+            and (vendor_res.get("is_new_vendor") or vendor_res.get("security_review_status") in ["unknown", "not_completed", "pending"])
+            and (cost_usd is not None and cost_usd >= 10000 or "legal_review_required" in risk_flags)
+        ):
+            rec = "escalate_to_human"
+            summary = f"New or unverified vendor '{vendor_res.get('vendor_name')}' with significant contract value requires formal Legal and Security onboarding."
+            next_step = "Route request to Legal and Security for new vendor contract onboarding."
+        elif any("production" in item for item in integrations):
+            rec = "escalate_to_human"
+            summary = "Request requires direct integration with production cloud infrastructure. High-risk security sign-off required."
+            next_step = "Route to Security Architecture team for technical risk assessment."
+        elif data_access == "customer_pii" or "privacy_review_required" in risk_flags:
+            rec = "escalate_to_human"
+            summary = "Request accesses customer PII data. Escalated to Privacy and Security for compliance review."
+            next_step = "Route to Privacy and Security officers for GDPR/compliance verification."
         elif catalog_res and catalog_res.get("has_overlap"):
             primary = catalog_res.get("primary_overlap") or {}
             rec = "use_existing_tool"
             summary = f"Existing approved tool '{primary.get('product_name')}' ({primary.get('category')}) was found in the software catalog with active seats."
             next_step = f"Notify requester to evaluate existing catalog software '{primary.get('product_name')}' or submit justification for redundant tooling."
-        elif not budget_res.get("fits_in_budget", True):
-            rec = "escalate_to_human"
-            summary = f"Request exceeds available department budget by ${budget_res.get('shortfall_usd', 0):,.2f}. Finance budget exception required."
-            next_step = "Route request to Finance for budget reallocation or exception approval."
-        elif vendor_res and (vendor_res.get("is_unavailable") or vendor_res.get("is_expired") or vendor_res.get("has_conflict")):
-            rec = "escalate_to_human"
-            summary = f"Vendor '{vendor_res.get('vendor_name')}' has security status '{vendor_res.get('security_review_status')}' or verification issues requiring human review."
-            next_step = "Route vendor profile to Security team for manual verification."
         else:
             rec = "approve_to_proceed"
             summary = f"Request meets preliminary criteria. Fits within available department budget. Required policy approvals identified."

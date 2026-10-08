@@ -191,15 +191,34 @@ def apply_guardrails(
     # -------------------------------------------------------------------------
     # 6. Override Recommendation on Deterministic Incompleteness or Overlap
     # -------------------------------------------------------------------------
+    cost = request.get("annual_cost_usd")
+    cost_dec = Decimal(str(cost)) if cost is not None else None
+    integrations = [str(i).lower() for i in (request.get("requested_integrations") or [])]
+    vendor_data = executed_tools.get("get_vendor_status", {}).get("data") or {}
+
     if len(merged_missing) > 0:
         rec = "needs_more_info"
-    elif "existing_tool_overlap" in merged_flags and "pixelcraft" in str(request.get("business_justification", "")).lower() and rec == "approve_to_proceed":
-        # Request REQ-1002 acknowledges PixelCraft exists but needs BrandBoard. If overlap is strong, recommend use_existing_tool or escalate
-        # In eval case PUB-02, either escalate or use_existing_tool or human review
-        pass
-    elif "budget_insufficient" in merged_flags and rec == "approve_to_proceed":
+    elif "prompt_injection_detected" in merged_flags:
         rec = "escalate_to_human"
-    elif "vendor_risk_unavailable" in merged_flags and rec == "approve_to_proceed":
+    elif "budget_insufficient" in merged_flags:
+        rec = "escalate_to_human"
+    elif (
+        "vendor_review_expired" in merged_flags
+        or "conflicting_vendor_evidence" in merged_flags
+        or "vendor_risk_unavailable" in merged_flags
+        or vendor_data.get("is_expired")
+        or vendor_data.get("has_conflict")
+        or vendor_data.get("is_unavailable")
+    ):
+        rec = "escalate_to_human"
+    elif (
+        (vendor_data.get("is_new_vendor") or vendor_data.get("security_review_status") in ["unknown", "not_completed", "pending"])
+        and (cost_dec is not None and cost_dec >= Decimal("10000.00") or "legal_review_required" in merged_flags)
+    ):
+        rec = "escalate_to_human"
+    elif any("production" in item for item in integrations) and rec != "escalate_to_human":
+        rec = "escalate_to_human"
+    elif (request.get("data_access_level") or "").lower() == "customer_pii" and rec == "use_existing_tool":
         rec = "escalate_to_human"
 
     # -------------------------------------------------------------------------

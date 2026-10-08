@@ -190,7 +190,19 @@ def search_software_catalog(
                 })
 
         matches.sort(key=lambda m: m["match_score"], reverse=True)
-        has_overlap = len(matches) > 0 and (matches[0]["match_score"] >= 2 or cat_norm != "")
+        category_matched = any(
+            cat_norm and (cat_norm in (m.get("category") or "").lower() or (m.get("category") or "").lower() in cat_norm)
+            for m in matches
+        )
+        name_matched = len(matches) > 0 and matches[0]["match_score"] >= 4
+        
+        # Non-software service categories (consulting, training, professional services)
+        # do not conflict with software catalog tool licenses
+        non_software_cats = {"professional services", "training", "services", "consulting", "hardware"}
+        if cat_norm in non_software_cats:
+            has_overlap = False
+        else:
+            has_overlap = category_matched or name_matched
 
         data = {
             "query": query,
@@ -532,10 +544,8 @@ def evaluate_policy(
 
     if vendor_result:
         v_data = vendor_result.get("data") or {}
-        if v_data.get("processes_personal_data") and "personal data" not in " ".join(privacy_triggers):
-            privacy_triggers.append("Vendor processes personal data according to risk registry")
-        if v_data.get("stores_data_outside_region"):
-            privacy_triggers.append("Vendor stores personal data outside operating jurisdiction")
+        if v_data.get("stores_data_outside_region") and (data_access in PRIVACY_DATA_TRIGGERS or "confidential" in data_access):
+            privacy_triggers.append("Vendor stores sensitive data outside operating jurisdiction")
 
     if privacy_triggers:
         risk_flags.append(RiskFlagItem(
