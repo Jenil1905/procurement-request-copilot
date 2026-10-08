@@ -1,6 +1,6 @@
 # Evaluation Results: Architecture A vs Architecture B
 
-- **Timestamp:** 2026-10-08 09:57:36Z
+- **Timestamp:** 2026-10-08 10:07:12Z
 - **Evaluation Mode:** `mock` (Model: `gemini-2.5-flash`)
 - **Policy Reference Date:** `2026-09-30`
 - **Test Set Size:** 28 cases (covering 6 edge categories + happy paths)
@@ -16,8 +16,8 @@
 | **Grounded Evidence Rate** | 95.5% | 95.5% | 100% evidence verified against tools |
 | **Policy Rule Adherence** | 100.0% | 100.0% | Exact match to deterministic code |
 | **Escalation Correctness** | 100.0% | 100.0% | Precision=1.0, Recall=1.0 |
-| **Average Latency** | 14.4 ms | 13.9 ms | Architecture B incurs additional staging |
-| **P95 Latency** | 5.7 ms | 5.9 ms | Arch A has lower tail latency |
+| **Average Latency** | 14.3 ms | 13.5 ms | Architecture B incurs additional staging |
+| **P95 Latency** | 5.8 ms | 4.7 ms | Arch A has lower tail latency |
 | **Average LLM Calls / Req** | 7.5 | 2.0 | Arch B has fixed 2-agent dispatch |
 | **Average Tool Calls / Req** | 6.0 | 5.5 | Identical tool execution depth |
 
