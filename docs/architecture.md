@@ -99,9 +99,9 @@ flowchart LR
 - **Traceability:** Single execution trace tracking tool inputs and outputs.
 
 ### Architecture B (Staged Two-Agent)
-- **Agent 1 ("Evidence Gatherer"):** Specializes purely in tool invocation and objective fact collection. It outputs an `EvidenceBundle` containing tool payloads and raw telemetry without drawing conclusions or issuing recommendations.
+- **Agent 1 ("Evidence Gatherer"):** Specializes purely in tool invocation and objective fact collection. It executes tools deterministically and outputs an `EvidenceBundle` containing tool payloads and raw telemetry without drawing conclusions or issuing recommendations.
 - **Agent 2 ("Decision Reviewer"):** Receives the original request alongside the unvarnished `EvidenceBundle` (with zero tool access) and synthesizes the candidate recommendation while being prompted to challenge weak or missing evidence.
-- **Characteristics:** Explicit separation of data retrieval from reasoning; higher LLM call count in live mode.
+- **Characteristics:** Explicit separation of data retrieval from reasoning; fewer LLM calls (2.0 vs 3.3) and lower live latency (5.4s vs 18.4s) due to deterministic tool gathering in Agent 1.
 
 ---
 
@@ -153,3 +153,31 @@ Regardless of LLM mode (live Gemini or deterministic mock), the candidate JSON i
    - Prompt injection patterns were detected.
 4. **Recommendation Sanitization:** Prohibits colloquial "approved" states and maps output strictly to:
    `approve_to_proceed | use_existing_tool | needs_more_info | escalate_to_human | reject`.
+
+---
+
+## 7. Measured Benchmark Comparison (Live Gemini 3.1 Flash Lite)
+
+All figures represent strictly measured numbers from the 28-case evaluation benchmark (`eval/test_set.json`):
+
+| Metric | Architecture A (Single Agent) | Architecture B (Staged 2-Agent) | Delta / Assessment |
+|---|:---:|:---:|---|
+| **Primary Pass Rate** | **27/28 (96.4%)** | **28/28 (100.0%)** | Arch A encountered 1 rate limit |
+| **Real Logic / Policy Failures** | **0 / 28 (0.0%)** | **0 / 28 (0.0%)** | Zero policy violations |
+| **Infrastructure Errors** | **1 (429 Rate Limit)** | **0** | Arch B avoided 15 RPM quota limit |
+| **Grounded Evidence Rate (Executed Tools)** | **96.4%** | **100.0%** | 100% of claims cite executed tool runs |
+| **Successful-Payload Evidence Rate** | **90.5%** | **95.5%** | Remainder (~4.5%) are simulated outages |
+| **Policy Rule Adherence** | **96.4%** | **100.0%** | Exact match to deterministic code |
+| **Escalation Correctness** | **96.4%** | **100.0%** | Precision=1.0, Recall=1.0 |
+| **Average Latency (Live)** | **18,437.8 ms** | **5,370.8 ms** | Arch B is 70.9% faster |
+| **P95 Latency (Live)** | **39,180.0 ms** | **9,451.9 ms** | Arch B tail latency is 4.1x lower |
+| **Average LLM Calls / Req** | **3.3 calls** | **2.0 calls** | Arch B eliminates dynamic planning hops |
+| **Average Tool Calls / Req** | **4.5 calls** | **5.5 calls** | Comparable tool coverage depth |
+
+---
+
+## 8. Known Limitations
+
+1. **Shared Author of Tests and System:** The test cases and system implementation were authored by the same engineer, creating a risk of shared assumptions between evaluation assertions and internal logic.
+2. **Mock-Mode Evaluation Limits:** Mock-mode results validate code path coverage, guardrail interception, and deterministic logic; they do not constitute evidence of LLM reasoning or prompt fidelity under ambiguous free-form conditions.
+3. **Assumed Policy Reference Date:** A static snapshot date of `2026-09-30` is assumed throughout vendor evaluation and policy freshness checks.

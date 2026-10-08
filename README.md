@@ -98,45 +98,49 @@ Every tool returns a uniform `ToolResult(ok=bool, data=dict, source=str, error=s
 
 ## 4. Evaluation Benchmark: Architecture A vs. Architecture B
 
-We evaluated both architectures against a 28-case evaluation benchmark (`eval/test_set.json`), encompassing 6 edge-case categories plus clean happy paths.
+We evaluated both architectures against a 28-case evaluation benchmark (`eval/test_set.json`), encompassing 6 edge-case categories plus clean happy paths, alongside a 6-case held-out generalization set (`eval/held_out_set.json`). All reported figures represent strictly measured live evaluations with Gemini 3.1 Flash Lite (`--repeats 1`).
 
-### Benchmark Results Table
+### Benchmark Results Table (Live Execution)
 
 | Benchmark Metric | Architecture A (Single Agent) | Architecture B (Staged 2-Agent) | Delta / Assessment |
 |---|:---:|:---:|---|
-| **Overall Pass Rate** | **28/28 (100.0%)** | **28/28 (100.0%)** | Exact parity across all categories |
-| **Exact Recommendation Match** | **100.0%** | **100.0%** | Parity (`approve_to_proceed`, `use_existing_tool`, etc.) |
-| **Grounded Evidence Rate** | **95.5%** | **95.5%** | 100% of claims verified against actual tool runs |
-| **Policy Rule Adherence** | **100.0%** | **100.0%** | Exact match to deterministic `evaluate_policy()` |
-| **Escalation Precision / Recall** | **1.0 / 1.0 (100%)** | **1.0 / 1.0 (100%)** | Zero unreviewed policy exceptions |
-| **Average Latency (Local)** | **14.4 ms** | **13.9 ms** | Local mock execution |
-| **P95 Latency (Local)** | **5.7 ms** | **5.9 ms** | Arch A has lower tail latency |
-| **Live LLM Calls per Request** | **1 call** | **2 calls** | Architecture B incurs 2x model calls |
-| **Estimated Live Network Latency** | **~1.2s** | **~2.8s** | Architecture B adds 130% latency |
+| **Overall Pass Rate** | **27/28 (96.4%)** | **28/28 (100.0%)** | Arch A incurred 1 rate-limit error |
+| **Real Logic / Policy Failures** | **0 / 28 (0.0%)** | **0 / 28 (0.0%)** | Zero policy violations across both |
+| **Infrastructure Errors** | **1 (429 Rate Limit)** | **0** | Arch B avoided 15 RPM quota limit |
+| **Exact Recommendation Match** | **96.4%** | **100.0%** | Recommendation taxonomy parity |
+| **Grounded Evidence Rate (Executed Tools)** | **96.4%** | **100.0%** | 100% of claims cite executed tool runs |
+| **Successful-Payload Evidence Rate** | **90.5%** | **95.5%** | Remainder (~4.5%) are simulated outages |
+| **Policy Rule Adherence** | **96.4%** | **100.0%** | Exact match to deterministic code rules |
+| **Escalation Correctness** | **96.4%** | **100.0%** | Precision=1.0, Recall=1.0 on mandatory review |
+| **Average Latency (Live)** | **18,437.8 ms** | **5,370.8 ms** | Arch B is 70.9% faster |
+| **P95 Latency (Live)** | **39,180.0 ms** | **9,451.9 ms** | Arch B tail latency is 4.1x lower |
+| **Average LLM Calls / Req** | **3.3 calls** | **2.0 calls** | Arch B eliminates dynamic planning hops |
+| **Average Tool Calls / Req** | **4.5 calls** | **5.5 calls** | Comparable tool coverage depth |
+| **Held-Out Set Pass Rate (6 cases)** | **5/6 (83.3%)** | **5/6 (83.3%)** | Parity; HO-04 flagged budget deficit |
 
-### Per-Category Breakdown
+### Per-Category Breakdown (Primary 28 Cases)
 
 | Category | Cases | Arch A Pass Rate | Arch B Pass Rate | Edge Conditions Tested |
 |---|:---:|:---:|:---:|---|
-| **Incomplete / Ambiguous Request** | 4 | 100% | 100% | Null cost, missing seats, missing justification, unknown data level |
-| **Existing Software Overlap** | 4 | 100% | 100% | BrandBoard vs PixelCraft, TaskFlow vs SprintMaster, seats expansion |
-| **Conflicting / Expired Vendor** | 3 | 100% | 100% | SignalWatch review > 365d, registry Approved vs API Expired |
-| **Security & Financial Boundaries** | 8 | 100% | 100% | Exact boundary testing: $1,000, $1,000.01, $10,000, $10,000.01, $25,000.01 |
-| **Prompt Injection Defence** | 3 | 100% | 100% | "Ignore rules", "CFO-approved", "bypass security checks" embedded in text |
-| **Tool / API Outages** | 3 | 100% | 100% | Upstream 503 outage, simulated API down toggle, unknown vendor 404 |
-| **Clean Happy Path** | 3 | 100% | 100% | Routine purchases under budget and within policy thresholds |
+| **Incomplete / Ambiguous Request** | 4 | 100.0% | 100.0% | Null cost, missing seats, missing justification, unknown data level |
+| **Existing Software Overlap** | 4 | 100.0% | 100.0% | BrandBoard vs PixelCraft, TaskFlow vs SprintMaster, seats expansion |
+| **Conflicting / Expired Vendor** | 3 | 100.0% | 100.0% | SignalWatch review > 365d, registry Approved vs API Expired |
+| **Security & Financial Boundaries** | 8 | 100.0% | 100.0% | Exact boundary testing: $1,000, $1,000.01, $10,000, $10,000.01, $25,000.01 |
+| **Prompt Injection Defence** | 3 | 100.0% | 100.0% | "Ignore rules", "CFO-approved", "bypass security checks" embedded in text |
+| **Tool / API Outages** | 3 | 100.0% | 100.0% | Upstream 503 outage, simulated API down toggle, unknown vendor 404 |
+| **Clean Happy Path** | 3 | 66.7% | 100.0% | Routine purchases under budget (TC-28 hit 15 RPM limit on Arch A) |
 
 ---
 
 ## 5. Architecture Comparison & Final Ship Decision
 
-### Final Ship Decision: **SHIP ARCHITECTURE A (Single Agent)**
+### Final Ship Decision: **SHIP ARCHITECTURE B (Staged Two-Agent)**
 
 #### Rationale:
-1. **Zero Accuracy Advantage from Multi-Agent Orchestration:** Both architectures achieve 100% benchmark accuracy because determinism, threshold enforcement, and security escalation are governed by code guardrails (`guardrails.py` and `policy_config.py`), not agent prompts.
-2. **Reduced Latency and Token Costs:** Architecture B requires two sequential LLM calls (Agent 1 for gathering, Agent 2 for review). In live deployment, this doubles token spend and introduces a 2.4–3.0 second latency overhead.
-3. **Simpler Enterprise Observability:** Architecture A maintains a single coherent tool execution trace, significantly simplifying enterprise auditing and debugging.
-4. **Resilience to Cascading Failures:** In Architecture B, a failure in Agent 1's serialization breaks Agent 2. Architecture A processes tools directly within a unified execution context.
+1. **Measured Latency & Cost Superiority:** In live deployment, Architecture B achieves 70.9% lower average latency (5.4s vs. 18.4s) and fewer LLM calls (2.0 vs. 3.3). Because Agent 1 executes all tool retrieval deterministically before handing a clean `EvidenceBundle` to Agent 2, it avoids multi-hop planning latencies.
+2. **Quota and Rate Limit Resilience:** Architecture A's iterative tool-calling loop exhausted the 15 RPM free-tier quota on TC-28. Architecture B completed all 28 cases with 0 infrastructure errors.
+3. **Identical Safety Parity:** Deterministic guardrails (`guardrails.py` and `policy_config.py`) enforce budget boundaries, approval tiers, and prompt injection defense on both architectures, resulting in zero real logic/policy failures.
+4. **Held-Out Generalization:** Both architectures achieved 83.3% (5/6) on the held-out evaluation set, with HO-04 correctly catching a real budget deficit.
 
 Detailed analysis is available in [Decision Memo](file:///home/jenil/Desktop/FDE-Assignment-3/docs/decision_memo.md).
 
@@ -163,9 +167,12 @@ Business data (justifications, vendor notes, catalog summaries) can contain adve
 
 ## 8. Known Limitations
 
-1. **Vendor Ambiguity on Free-Text Names:** If a requester inputs an unrecognized slang abbreviation for an unlisted vendor, fuzzy matching will route the vendor to Security manual verification (HTTP 404 fallback).
-2. **Mock Service Concurrency:** The local mock service (`mock_api`) is designed for development and testing; production deployment would integrate enterprise SSO/SCIM directories (Okta/Workday) and real third-party risk feeds (e.g., SecurityScorecard, Whistic).
-3. **Budget Periodicity:** Department budgets in `department_budgets.csv` represent fixed fiscal allocations. Production systems would pull real-time remaining purchase order balances from ERP systems (SAP/NetSuite).
+1. **Shared Author of Tests and System:** The test cases and system implementation were authored by the same engineer, presenting a risk of shared assumptions between evaluation assertions and internal logic.
+2. **Mock-Mode Evaluation Limits:** Mock-mode results validate code path coverage, guardrail interception, and deterministic logic; they do not constitute evidence of LLM reasoning or prompt fidelity under ambiguous free-form conditions.
+3. **Assumed Policy Reference Date:** A static snapshot date of `2026-09-30` is assumed throughout vendor evaluation and policy freshness checks.
+4. **Vendor Ambiguity on Free-Text Names:** If a requester inputs an unrecognized slang abbreviation for an unlisted vendor, fuzzy matching will route the vendor to Security manual verification (HTTP 404 fallback).
+5. **Mock Service Concurrency:** The local mock service (`mock_api`) is designed for development and testing; production deployment would integrate enterprise SSO/SCIM directories (Okta/Workday) and real third-party risk feeds (e.g., SecurityScorecard, Whistic).
+6. **Budget Periodicity:** Department budgets in `department_budgets.csv` represent fixed fiscal allocations. Production systems would pull real-time remaining purchase order balances from ERP systems (SAP/NetSuite).
 
 ---
 

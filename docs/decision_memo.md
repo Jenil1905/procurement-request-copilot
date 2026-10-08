@@ -4,46 +4,48 @@
 **From:** Forward Deployed Engineering (FDE)  
 **Date:** October 8, 2026  
 **Subject:** Production Ship Decision: Architecture A vs. Architecture B  
-**Word Count:** 398 words  
 
 ---
 
 ### Executive Recommendation
-**Ship Architecture A (Single-Agent with Deterministic Guardrails).**
+**Ship Architecture B (Staged Pipeline with Deterministic Guardrails).**
 
-Our evaluation benchmark across 28 multi-category test cases reveals that Architecture A delivers complete quality and safety parity with Architecture B while avoiding the operational overhead, token cost, and latency penalties inherent in multi-agent orchestration.
+Our live evaluation benchmark using Gemini 3.1 Flash Lite across 28 primary cases and 6 held-out cases demonstrates that Architecture B achieves 100% benchmark completion, zero real policy failures, 70.9% lower latency (5,370.8 ms vs. 18,437.8 ms), fewer LLM calls (2.0 vs. 3.3 per request), and zero infrastructure errors.
 
 ---
 
-### Evaluation Findings & Quantitative Comparison
+### Measured Live Benchmark Results
 
-Both architectures were benchmarked against the identical 28-case evaluation harness (`eval/test_set.json`), spanning incomplete requests, software catalog overlaps, expired/conflicting vendors, financial thresholds ($1k, $10k, $25k), prompt injections, and upstream API outages.
+Measured against `eval/test_set.json` (28 cases) and `eval/held_out_set.json` (6 cases):
 
-| Metric | Architecture A (Single-Agent) | Architecture B (Staged Two-Agent) | Delta / Assessment |
+| Metric | Architecture A (Single-Agent) | Architecture B (Staged Two-Agent) | Assessment |
 |---|:---:|:---:|---|
-| **Pass Rate (All Checks)** | **28/28 (100.0%)** | **28/28 (100.0%)** | Identical |
-| **Exact Recommendation Match** | **100.0%** | **100.0%** | Parity |
-| **Grounded Evidence Rate** | **95.5%** | **95.5%** | Parity |
-| **Policy Rule Adherence** | **100.0%** | **100.0%** | Deterministic parity |
-| **Escalation Precision / Recall** | **1.0 / 1.0 (100%)** | **1.0 / 1.0 (100%)** | Zero unreviewed leaks |
-| **P95 Latency (Local Execution)** | **5.7 ms** | **5.9 ms** | Arch A is 3.4% faster |
-| **Live LLM Calls per Request** | **1 call** | **2 calls** | Arch B doubles token spend |
-| **Estimated Live Network Latency** | **~1.2s** | **~2.8s** | Arch B adds ~130% latency |
+| **Primary Pass Rate** | **27/28 (96.4%)** | **28/28 (100.0%)** | Arch A had 1 quota error |
+| **Real Policy Failures** | **0 / 28 (0.0%)** | **0 / 28 (0.0%)** | Zero violations across both |
+| **Infrastructure Errors** | **1 (429 Rate Limit)** | **0** | Arch B avoided quota limits |
+| **Grounded Evidence Rate (Tools)** | **96.4%** | **100.0%** | Claims map to executed tools |
+| **Successful-Payload Evidence Rate** | **90.5%** | **95.5%** | ~4.5% are simulated outages |
+| **Policy Rule Adherence** | **96.4%** | **100.0%** | Exact match to code rules |
+| **Escalation Correctness** | **96.4%** | **100.0%** | Precision=1.0, Recall=1.0 |
+| **Average Latency (Live)** | **18,437.8 ms** | **5,370.8 ms** | Arch B is 70.9% faster |
+| **P95 Latency (Live)** | **39,180.0 ms** | **9,451.9 ms** | Arch B has 4.1x lower tail latency |
+| **Average LLM Calls / Req** | **3.3 calls** | **2.0 calls** | Arch B avoids planning roundtrips |
+| **Held-Out Set Pass Rate** | **5/6 (83.3%)** | **5/6 (83.3%)** | Parity; HO-04 flagged budget deficit |
 
 ---
 
-### Why Architecture B Does Not Justify Production Deployment
+### Empirical Analysis & Trade-Offs
 
-Architecture B was designed to separate evidence gathering from recommendation synthesis by having Agent 1 produce a structured `EvidenceBundle` and Agent 2 review and challenge the findings. 
-
-While theoretically attractive, our empirical results demonstrate that **staged multi-agent orchestration provides zero marginal accuracy improvement**:
-1. **Determinism Resides in Code, Not Agent Prompts:** Safety guarantees (financial tiers, budget shortfalls, expired vendor reviews > 365 days, and prompt injections) are computed by `evaluate_policy()` and enforced by `guardrails.py`. Agent 2’s "critical review" prompt did not catch a single edge case that the deterministic code layer had not already resolved.
-2. **Double Latency and Compounded Failure Modes:** In live LLM deployment, Architecture B requires two sequential network round-trips. Agent 2 cannot begin until Agent 1 completes its serialization. This doubles token consumption and introduces two separate failure points for timeouts and rate limits.
-3. **Observability & Debugging Complexity:** Architecture A provides a single execution trace linking tool inputs to final synthesis, making auditability straightforward for enterprise procurement compliance.
+1. **Why Architecture B Won:** Agent 1 gathers evidence deterministically without LLM coordination hops, providing a structured `EvidenceBundle` to Agent 2. Architecture A’s interactive loop required multiple planning roundtrips (3.3 vs. 2.0 calls), causing 3.4x higher latency and exhausting the 15 RPM free-tier quota on TC-28.
+2. **Deterministic Safety:** Core governance (approval tiers, budget shortfalls, expired vendor reviews > 365 days, prompt injections) is guaranteed by code guardrails (`evaluate_policy()`, `guardrails.py`), yielding 0 real failures across all 28 primary cases.
+3. **Held-Out Generalization:** On 6 held-out cases, both architectures scored 83.3% (5/6). The single failure (HO-04) occurred because a $25,000 request exceeded available Sales budget, correctly halting.
 
 ---
 
-### Conclusion
-Per our core design principle—*AI interprets, CODE enforces, HUMAN decides*—safety and correctness come from rigorous deterministic guardrails, not redundant LLM hops. Architecture A is simpler, faster, more cost-effective, and fully proven. 
+### Known Limitations
 
-**Decision:** Ship Architecture A to production.
+1. **Shared Author of Tests and System:** Benchmark cases and system logic were authored by the same engineer, creating potential risk of shared assumptions.
+2. **Mock-Mode Evaluation Limits:** Mock-mode results validate code paths and deterministic guardrails; they are not evidence of LLM reasoning under ambiguity.
+3. **Assumed Policy Snapshot Date:** A static snapshot date of `2026-09-30` is assumed throughout vendor evaluation and freshness checks.
+
+**Decision:** Ship Architecture B to production.

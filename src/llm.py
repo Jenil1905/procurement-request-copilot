@@ -38,6 +38,20 @@ def get_llm_mode() -> str:
     return LLM_MODE
 
 
+class LLMInfrastructureError(Exception):
+    """Raised when an LLM call fails due to timeouts, rate limits, or network connectivity issues."""
+    pass
+
+
+def parse_llm_json(raw_text: str) -> dict[str, Any]:
+    """Extracts JSON object from model response, stripping code fences if present."""
+    text = raw_text.strip()
+    if text.startswith("```"):
+        text = re.sub(r"^```(?:json)?\s*", "", text)
+        text = re.sub(r"\s*```$", "", text)
+    return json.loads(text.strip())
+
+
 class LLMClient:
     """Pluggable LLM interface wrapping google-genai and deterministic mock."""
 
@@ -49,8 +63,12 @@ class LLMClient:
         if self.mode == "live" and GEMINI_API_KEY:
             try:
                 from google import genai
-                self._genai_client = genai.Client(api_key=GEMINI_API_KEY)
-                logger.info("Initialized live Gemini client with model %s", self.model_name)
+                from google.genai import types
+                self._genai_client = genai.Client(
+                    api_key=GEMINI_API_KEY,
+                    http_options=types.HttpOptions(timeout=30000),
+                )
+                logger.info("Initialized live Gemini client with model %s (30s timeout)", self.model_name)
             except Exception as exc:
                 logger.error("Failed to initialize google-genai client (%s); falling back to mock.", exc)
                 self.mode = "mock"
@@ -267,6 +285,54 @@ class LLMClient:
     # Live Gemini Implementation (google-genai SDK)
     # =========================================================================
 
+    def _call_gemini_api(self, contents: Any, config: Any) -> Any:
+        """Executes a call to Gemini models.generate_content with a 30s timeout and max 2 retries with backoff."""
+        from google.genai import types
+
+        max_retries = 2
+        backoff_delays = [5.0, 10.0]
+        last_error = None
+
+        if not hasattr(config, "http_options") or config.http_options is None:
+            config.http_options = types.HttpOptions(timeout=30000)
+        elif config.http_options.timeout is None:
+            config.http_options.timeout = 30000
+
+        for attempt in range(max_retries + 1):
+            try:
+                resp = self._genai_client.models.generate_content(
+                    model=self.model_name,
+                    contents=contents,
+                    config=config,
+                )
+                return resp
+            except Exception as exc:
+                last_error = exc
+                err_str = str(exc).lower()
+                is_transient = any(
+                    term in err_str
+                    for term in [
+                        "429", "resource_exhausted", "quota", "rate limit", "ratelimit",
+                        "timeout", "timed out", "deadline", "deadline_exceeded", "504",
+                        "503", "unavailable", "connection", "remote protocol"
+                    ]
+                ) or isinstance(exc, (TimeoutError, ConnectionError))
+
+                if attempt < max_retries and is_transient:
+                    delay = backoff_delays[attempt]
+                    logger.warning(
+                        "Gemini API transient failure (attempt %d/%d): %s. Backing off for %.1fs...",
+                        attempt + 1, max_retries + 1, exc, delay
+                    )
+                    time.sleep(delay)
+                else:
+                    break
+
+        err_str = str(last_error).lower()
+        if any(term in err_str for term in ["429", "resource_exhausted", "quota", "rate limit", "ratelimit", "timeout", "timed out", "deadline", "504", "503", "connection"]):
+            raise LLMInfrastructureError(f"Gemini API infrastructure failure after {max_retries} retries ({type(last_error).__name__}): {last_error}") from last_error
+        raise last_error
+
     def _live_plan_next_tool(
         self,
         request: dict[str, Any],
@@ -274,8 +340,8 @@ class LLMClient:
         step_number: int,
     ) -> dict[str, Any] | None:
         """Invokes Gemini model to decide next tool call or finish."""
-        # If all standard 5 tools have run, finish tool loop
-        if len(executed_tools) >= 5 or step_number >= 8:
+        # Conclude once core evidence tools are executed or max planning steps reached
+        if len(executed_tools) >= 4 or step_number >= 3:
             return None
 
         # Build prompt showing current state
@@ -293,13 +359,11 @@ class LLMClient:
             config = types.GenerateContentConfig(
                 response_mime_type="application/json",
                 temperature=0.0,
+                thinking_config=types.ThinkingConfig(thinking_budget=0),
+                http_options=types.HttpOptions(timeout=30000),
             )
-            resp = self._genai_client.models.generate_content(
-                model=self.model_name,
-                contents=prompt,
-                config=config,
-            )
-            parsed = json.loads(resp.text)
+            resp = self._call_gemini_api(contents=prompt, config=config)
+            parsed = parse_llm_json(resp.text)
             tool_name = parsed.get("tool")
             if tool_name is None or str(tool_name).lower() in ["null", "none", "done"]:
                 return None
@@ -308,6 +372,8 @@ class LLMClient:
             if tool_name in executed_tools and len(executed_tools) >= 3:
                 return None
             return {"name": tool_name, "args": parsed.get("args") or {}}
+        except LLMInfrastructureError:
+            raise
         except Exception as exc:
             logger.warning("Live LLM tool planning failed (%s); using deterministic planner.", exc)
             return self._mock_plan_next_tool(request, executed_tools, step_number)
@@ -339,24 +405,13 @@ class LLMClient:
                 system_instruction=system_prompt,
                 response_mime_type="application/json",
                 temperature=0.0,
+                thinking_config=types.ThinkingConfig(thinking_budget=0),
+                http_options=types.HttpOptions(timeout=30000),
             )
-            resp = self._genai_client.models.generate_content(
-                model=self.model_name,
-                contents=content,
-                config=config,
-            )
-            return json.loads(resp.text)
+            resp = self._call_gemini_api(contents=content, config=config)
+            return parse_llm_json(resp.text)
+        except LLMInfrastructureError:
+            raise
         except Exception as exc:
-            if "429" in str(exc) or "RESOURCE_EXHAUSTED" in str(exc):
-                time.sleep(4.0)
-                try:
-                    resp = self._genai_client.models.generate_content(
-                        model=self.model_name,
-                        contents=content,
-                        config=config,
-                    )
-                    return json.loads(resp.text)
-                except Exception:
-                    pass
             logger.warning("Live LLM synthesis failed (%s); using deterministic mock generator.", exc)
             return self._mock_generate_recommendation(request, executed_tools, instructions)
