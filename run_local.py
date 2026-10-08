@@ -62,26 +62,26 @@ def main() -> None:
         wait_for_api("http://127.0.0.1:8001/health", api_proc)
         print("Vendor-risk API is ready.")
 
-        try:
-            __import__("streamlit")
-        except ImportError:
-            print("Streamlit is not installed. Run: pip install -r requirements.txt")
-            print("The mock API is still running. Press Ctrl+C to stop.")
-        else:
-            print("Starting starter UI on http://127.0.0.1:8501 ...")
-            procs.append(
-                start(
-                    [
-                        sys.executable,
-                        "-m",
-                        "streamlit",
-                        "run",
-                        "app.py",
-                        "--server.port",
-                        "8501",
-                    ]
-                )
-            )
+        print("Starting Procurement Copilot UI on http://127.0.0.1:8000 ...")
+        app_proc = start(
+            [
+                sys.executable,
+                "-m",
+                "uvicorn",
+                "app:app",
+                "--host",
+                "127.0.0.1",
+                "--port",
+                "8000",
+            ]
+        )
+        procs.append(app_proc)
+        wait_for_api("http://127.0.0.1:8000/health", app_proc)
+        print("\n=======================================================")
+        print("  AI Procurement Request Copilot is RUNNING!")
+        print("  Open UI: http://127.0.0.1:8000")
+        print("  Vendor Risk API: http://127.0.0.1:8001")
+        print("=======================================================\n")
 
         while True:
             time.sleep(1)
