@@ -26,7 +26,7 @@ logger = logging.getLogger(__name__)
 
 # Config from environment
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
-MODEL_NAME = os.getenv("MODEL_NAME", "gemini-2.5-flash")
+MODEL_NAME = os.getenv("MODEL_NAME", "gemini-3.1-flash-lite")
 LLM_MODE = os.getenv("LLM_MODE", "mock" if not GEMINI_API_KEY else "live").lower()
 
 
@@ -285,6 +285,7 @@ class LLMClient:
             f"Already executed tools: {list(executed_tools.keys())}\n\n"
             "Determine the next tool to execute, or decide if all necessary evidence has been gathered.\n"
             "Allowed tools: get_request_and_employee, search_software_catalog, check_budget, get_vendor_status, evaluate_policy, get_purchase_history.\n"
+            "If core evidence (software catalog, department budget, and vendor status) has already been gathered, return {\"tool\": null} to conclude.\n"
             "Respond ONLY with a JSON object: {\"tool\": \"<tool_name>\", \"args\": {<arguments>}} or {\"tool\": null} if done."
         )
         try:
@@ -300,10 +301,11 @@ class LLMClient:
             )
             parsed = json.loads(resp.text)
             tool_name = parsed.get("tool")
-            if not tool_name or tool_name not in ["get_request_and_employee", "search_software_catalog", "check_budget", "get_vendor_status", "evaluate_policy", "get_purchase_history"]:
-                # Fallback to mock sequence if LLM finished or hallucinated
-                return self._mock_plan_next_tool(request, executed_tools, step_number)
-            if tool_name in executed_tools and len(executed_tools) >= 4:
+            if tool_name is None or str(tool_name).lower() in ["null", "none", "done"]:
+                return None
+            if tool_name not in ["get_request_and_employee", "search_software_catalog", "check_budget", "get_vendor_status", "evaluate_policy", "get_purchase_history"]:
+                return None
+            if tool_name in executed_tools and len(executed_tools) >= 3:
                 return None
             return {"name": tool_name, "args": parsed.get("args") or {}}
         except Exception as exc:
@@ -345,5 +347,16 @@ class LLMClient:
             )
             return json.loads(resp.text)
         except Exception as exc:
+            if "429" in str(exc) or "RESOURCE_EXHAUSTED" in str(exc):
+                time.sleep(4.0)
+                try:
+                    resp = self._genai_client.models.generate_content(
+                        model=self.model_name,
+                        contents=content,
+                        config=config,
+                    )
+                    return json.loads(resp.text)
+                except Exception:
+                    pass
             logger.warning("Live LLM synthesis failed (%s); using deterministic mock generator.", exc)
             return self._mock_generate_recommendation(request, executed_tools, instructions)

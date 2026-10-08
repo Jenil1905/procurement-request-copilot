@@ -754,3 +754,45 @@ TOOL_SCHEMAS = [
         },
     },
 ]
+
+
+def execute_tool_call(
+    tool_name: str,
+    tool_args: dict[str, Any] | None,
+    raw_request: dict[str, Any],
+    executed_tools: dict[str, dict[str, Any]],
+    simulate_vendor_down: bool = False,
+) -> dict[str, Any]:
+    """Robustly invokes a tool call adapting arguments to the tool signature."""
+    args = dict(tool_args or {})
+    try:
+        if tool_name == "get_request_and_employee":
+            req_id = args.get("request_id") or args.get("id") or raw_request.get("request_id")
+            return get_request_and_employee(req_id)
+        elif tool_name == "search_software_catalog":
+            q = args.get("query") or args.get("product_name") or raw_request.get("product_name")
+            cat = args.get("category") or raw_request.get("category")
+            return search_software_catalog(query=q, category=cat)
+        elif tool_name == "check_budget":
+            dept = args.get("department") or raw_request.get("department") or "Engineering"
+            amt = args.get("amount") if args.get("amount") is not None else raw_request.get("annual_cost_usd")
+            return check_budget(department=dept, amount=amt)
+        elif tool_name == "get_vendor_status":
+            v_name = args.get("vendor_name") or args.get("vendor") or raw_request.get("vendor_name") or ""
+            sim_down = simulate_vendor_down or bool(args.get("simulate_down"))
+            return get_vendor_status(vendor_name=v_name, simulate_down=sim_down)
+        elif tool_name == "evaluate_policy":
+            req = args.get("request") or raw_request
+            b_res = args.get("budget_result") or executed_tools.get("check_budget")
+            v_res = args.get("vendor_result") or executed_tools.get("get_vendor_status")
+            return evaluate_policy(request=req, budget_result=b_res, vendor_result=v_res)
+        elif tool_name == "get_purchase_history":
+            v_name = args.get("vendor_name") or raw_request.get("vendor_name")
+            cat = args.get("category") or raw_request.get("category")
+            dept = args.get("department") or raw_request.get("department")
+            return get_purchase_history(vendor_name=v_name, category=cat, department=dept)
+        else:
+            return ToolResult(ok=False, source=tool_name, error=f"Unknown tool '{tool_name}'").model_dump()
+    except Exception as exc:
+        logger.exception("Error executing tool %s", tool_name)
+        return ToolResult(ok=False, source=tool_name, error=f"Exception in {tool_name}: {exc}").model_dump()

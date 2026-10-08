@@ -102,6 +102,10 @@ def apply_guardrails(
     }
 
     for item in raw_evidence:
+        if isinstance(item, str):
+            item = {"finding": item, "claim": item, "source": "evaluate_policy", "reference": "procurement_policy.md"}
+        elif not isinstance(item, dict):
+            continue
         source_name = item.get("source") or item.get("tool") or ""
         canonical_tool = alias_to_tool.get(source_name.lower().strip())
         finding = item.get("finding") or item.get("claim") or ""

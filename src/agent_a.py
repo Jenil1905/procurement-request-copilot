@@ -20,6 +20,7 @@ from src.tools import (
     TOOL_MAP,
     check_budget,
     evaluate_policy,
+    execute_tool_call,
     get_request_and_employee,
     get_vendor_status,
     search_software_catalog,
@@ -96,20 +97,14 @@ def run_agent_a(
         if tool_name in executed_tools and len(executed_tools) >= 5:
             break
 
-        # Execute selected tool
-        t_func = TOOL_MAP[tool_name]
         t_start = time.perf_counter()
-
-        # Handle simulation overrides
-        if tool_name == "get_vendor_status" and simulate_vendor_down:
-            tool_args["simulate_down"] = True
-
-        try:
-            res = t_func(**tool_args)
-        except Exception as exc:
-            logger.exception("Error executing tool %s", tool_name)
-            res = {"ok": False, "source": tool_name, "error": str(exc), "data": None}
-
+        res = execute_tool_call(
+            tool_name=tool_name,
+            tool_args=tool_args,
+            raw_request=raw_request,
+            executed_tools=executed_tools,
+            simulate_vendor_down=simulate_vendor_down,
+        )
         t_dur = (time.perf_counter() - t_start) * 1000
         tool_calls += 1
         tool_names.append(tool_name)
