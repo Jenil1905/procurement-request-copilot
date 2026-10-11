@@ -104,31 +104,39 @@ We evaluated both architectures against a 28-case evaluation benchmark (`eval/te
 
 | Benchmark Metric | Architecture A (Single Agent) | Architecture B (Staged 2-Agent) | Delta / Assessment |
 |---|:---:|:---:|---|
-| **Overall Pass Rate** | **27/28 (96.4%)** | **28/28 (100.0%)** | Arch A incurred 1 rate-limit error |
-| **Real Logic / Policy Failures** | **0 / 28 (0.0%)** | **0 / 28 (0.0%)** | Zero policy violations across both |
-| **Infrastructure Errors** | **1 (429 Rate Limit)** | **0** | Arch B avoided 15 RPM quota limit |
-| **Exact Recommendation Match** | **96.4%** | **100.0%** | Recommendation taxonomy parity |
-| **Grounded Evidence Rate (Executed Tools)** | **96.4%** | **100.0%** | 100% of claims cite executed tool runs |
-| **Successful-Payload Evidence Rate** | **90.5%** | **95.5%** | Remainder (~4.5%) are simulated outages |
-| **Policy Rule Adherence** | **96.4%** | **100.0%** | Exact match to deterministic code rules |
-| **Escalation Correctness** | **96.4%** | **100.0%** | Precision=1.0, Recall=1.0 on mandatory review |
-| **Average Latency (Live)** | **18,437.8 ms** | **5,370.8 ms** | Arch B is 70.9% faster |
-| **P95 Latency (Live)** | **39,180.0 ms** | **9,451.9 ms** | Arch B tail latency is 4.1x lower |
-| **Average LLM Calls / Req** | **3.3 calls** | **2.0 calls** | Arch B eliminates dynamic planning hops |
-| **Average Tool Calls / Req** | **4.5 calls** | **5.5 calls** | Comparable tool coverage depth |
-| **Held-Out Set Pass Rate (6 cases)** | **5/6 (83.3%)** | **5/6 (83.3%)** | Parity; HO-04 flagged budget deficit |
+| **Overall Pass Rate** | **20/28 (71.4%)** | **28/28 (100.0%)** | Arch B achieved full recommendation parity |
+| **Real Logic / Policy Failures** | **8 / 28 (28.6%)** | **0 / 28 (0.0%)** | Arch A over-escalated clean happy paths |
+| **Infrastructure Errors** | **0** | **0** | All calls completed within timeout/retry limits |
+| **Exact Recommendation Match** | **71.4%** | **100.0%** | Arch B strictly matched expected taxonomy |
+| **Grounded Evidence Rate (Executed Tools)** | **100.0%** | **100.0%** | 100% of claims cite executed tool runs |
+| **Successful-Payload Evidence Rate** | **72.5%** | **95.5%** | Arch B cleanly handles service outages |
+| **Policy Rule Adherence** | **100.0%** | **100.0%** | Exact match to deterministic code rules |
+| **Escalation Correctness** | **100.0%** | **100.0%** | Precision=1.0, Recall=1.0 on mandatory review |
+| **Average Latency (Clean Live)** | **9,107.4 ms** | **5,370.8 ms** | Arch B is 41.0% faster (see Latency Caveat below) |
+| **P95 Latency (Clean Live)** | **15,319.6 ms** | **9,451.9 ms** | Arch B tail latency is 1.6x lower |
+| **Average LLM Calls / Req** | **3.5 calls** | **2.0 calls** | Arch B eliminates dynamic planning hops |
+| **Average Tool Calls / Req** | **4.6 calls** | **5.5 calls** | Full tool coverage depth across both |
+| **Held-Out Set Pass Rate (6 cases)** | **5/6 (83.3%)** | **5/6 (83.3%)** | Parity; HO-04 test expectation defect |
+
+> **Latency Comparison Caveat:**  
+> In initial sequential benchmark runs, Architecture A averaged ~18.4s because it hit transient 504 gateway timeouts and 5s/10s rate-limit retry backoffs. In clean, unthrottled runs, Architecture A averages **9.1s** vs Architecture B's **5.4s**. Saying "Architecture B is 70% faster" overstates the true architectural difference: Architecture B is genuinely **~41% faster**, strictly because Agent 1 gathers evidence deterministically, reducing total LLM roundtrips from 3.5 to 2.0.
 
 ### Per-Category Breakdown (Primary 28 Cases)
 
 | Category | Cases | Arch A Pass Rate | Arch B Pass Rate | Edge Conditions Tested |
 |---|:---:|:---:|:---:|---|
 | **Incomplete / Ambiguous Request** | 4 | 100.0% | 100.0% | Null cost, missing seats, missing justification, unknown data level |
-| **Existing Software Overlap** | 4 | 100.0% | 100.0% | BrandBoard vs PixelCraft, TaskFlow vs SprintMaster, seats expansion |
+| **Existing Software Overlap** | 4 | 75.0% | 100.0% | BrandBoard vs PixelCraft, TaskFlow vs SprintMaster, seats expansion |
 | **Conflicting / Expired Vendor** | 3 | 100.0% | 100.0% | SignalWatch review > 365d, registry Approved vs API Expired |
-| **Security & Financial Boundaries** | 8 | 100.0% | 100.0% | Exact boundary testing: $1,000, $1,000.01, $10,000, $10,000.01, $25,000.01 |
+| **Security & Financial Boundaries** | 8 | 50.0% | 100.0% | Exact boundary testing: $1,000, $1,000.01, $10,000, $10,000.01, $25,000.01 |
 | **Prompt Injection Defence** | 3 | 100.0% | 100.0% | "Ignore rules", "CFO-approved", "bypass security checks" embedded in text |
 | **Tool / API Outages** | 3 | 100.0% | 100.0% | Upstream 503 outage, simulated API down toggle, unknown vendor 404 |
-| **Clean Happy Path** | 3 | 66.7% | 100.0% | Routine purchases under budget (TC-28 hit 15 RPM limit on Arch A) |
+| **Clean Happy Path** | 3 | 0.0% | 100.0% | Routine purchases under budget (Arch A over-escalated to human review) |
+
+### Held-Out Evaluation & The HO-04 Test Defect
+
+On the 6 held-out cases (`eval/held_out_set.json`), both architectures scored **5/6 (83.3%)** with zero infrastructure errors.
+- **The HO-04 "Failure" is a Test Defect:** The test case `HO-04` ($25,000 Sales Intelligence add-on) expected a recommendation of `approve_to_proceed`. However, according to the official financial data in `department_budgets.csv`, the Sales department had only $20,000 remaining available software budget. Both Architecture A and Architecture B correctly computed the $5,000 dollar shortfall, raised `budget_insufficient`, and enforced human review. The test's expected answer was erroneous; the system performed exactly as designed by preventing an unauthorized budget overrun.
 
 ---
 
@@ -137,12 +145,12 @@ We evaluated both architectures against a 28-case evaluation benchmark (`eval/te
 ### Final Ship Decision: **SHIP ARCHITECTURE B (Staged Two-Agent)**
 
 #### Rationale:
-1. **Measured Latency & Cost Superiority:** In live deployment, Architecture B achieves 70.9% lower average latency (5.4s vs. 18.4s) and fewer LLM calls (2.0 vs. 3.3). Because Agent 1 executes all tool retrieval deterministically before handing a clean `EvidenceBundle` to Agent 2, it avoids multi-hop planning latencies.
-2. **Quota and Rate Limit Resilience:** Architecture A's iterative tool-calling loop exhausted the 15 RPM free-tier quota on TC-28. Architecture B completed all 28 cases with 0 infrastructure errors.
-3. **Identical Safety Parity:** Deterministic guardrails (`guardrails.py` and `policy_config.py`) enforce budget boundaries, approval tiers, and prompt injection defense on both architectures, resulting in zero real logic/policy failures.
+1. **Quality Advantage of Two-Stage Review:** In live testing, Architecture A's single agent suffered from over-conservatism, escalating 8 routine requests to `escalate_to_human` when standard approval was warranted. Architecture B's explicit separation—where Agent 2 challenges a structured `EvidenceBundle`—achieved 100% recommendation fidelity (28/28).
+2. **True Latency & Token Efficiency:** Architecture B completes requests in 5.4s vs 9.1s for Architecture A (~41% faster), requiring only 2.0 LLM calls per request instead of 3.5. By executing data retrieval deterministically in Agent 1, Architecture B eliminates multi-round LLM tool-orchestration overhead.
+3. **Identical Safety Parity:** Deterministic guardrails (`guardrails.py` and `policy_config.py`) enforce budget boundaries, approval tiers, and prompt injection defense on both architectures, ensuring zero unreviewed policy violations.
 4. **Held-Out Generalization:** Both architectures achieved 83.3% (5/6) on the held-out evaluation set, with HO-04 correctly catching a real budget deficit.
 
-Detailed analysis is available in [Decision Memo](file:///home/jenil/Desktop/FDE-Assignment-3/docs/decision_memo.md).
+Detailed analysis is available in [Decision Memo](docs/decision_memo.md).
 
 ---
 
@@ -178,9 +186,9 @@ Business data (justifications, vendor notes, catalog summaries) can contain adve
 
 ## 9. Deliverables Directory
 
-- [starter_pack_notes.md](file:///home/jenil/Desktop/FDE-Assignment-3/docs/starter_pack_notes.md): Comprehensive schema, policy threshold, and API endpoint documentation.
-- [bugs_found.md](file:///home/jenil/Desktop/FDE-Assignment-3/docs/bugs_found.md): Log of scaffold bugs identified, root causes, and fixes applied.
-- [architecture.md](file:///home/jenil/Desktop/FDE-Assignment-3/docs/architecture.md): Detailed architectural specification and Mermaid diagrams.
-- [decision_memo.md](file:///home/jenil/Desktop/FDE-Assignment-3/docs/decision_memo.md): 470-word executive memo defending the Architecture A ship decision.
-- [test_set.json](file:///home/jenil/Desktop/FDE-Assignment-3/eval/test_set.json): 28-case evaluation benchmark dataset.
-- [results.md](file:///home/jenil/Desktop/FDE-Assignment-3/eval/results/results.md): Detailed comparative evaluation benchmark report.
+- [starter_pack_notes.md](docs/starter_pack_notes.md): Comprehensive schema, policy threshold, and API endpoint documentation.
+- [bugs_found.md](docs/bugs_found.md): Log of scaffold bugs identified, root causes, and fixes applied.
+- [architecture.md](docs/architecture.md): Detailed architectural specification and Mermaid diagrams.
+- [decision_memo.md](docs/decision_memo.md): 495-word executive memo defending the Architecture B ship decision.
+- [test_set.json](eval/test_set.json): 28-case evaluation benchmark dataset.
+- [results.md](eval/results/results.md): Detailed comparative evaluation benchmark report.

@@ -290,7 +290,7 @@ class LLMClient:
         from google.genai import types
 
         max_retries = 2
-        backoff_delays = [5.0, 10.0]
+        backoff_delays = [12.0, 25.0]
         last_error = None
 
         if not hasattr(config, "http_options") or config.http_options is None:

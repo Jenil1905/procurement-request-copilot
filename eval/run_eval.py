@@ -216,7 +216,7 @@ def run_benchmark(
             "avg_latency_ms": round(avg_case_lat, 1),
             "runs": case_runs,
         })
-        time.sleep(1.0)
+        time.sleep(4.0)
 
     # Aggregations across all evaluations
     total_evals = len(all_evals)

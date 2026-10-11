@@ -904,20 +904,20 @@
   "A": {
     "architecture": "A",
     "unique_cases": 28,
-    "unique_passed": 27,
-    "case_consistency_pct": 96.4,
+    "unique_passed": 20,
+    "case_consistency_pct": 71.4,
     "total_evaluations": 28,
-    "passed_evaluations": 27,
-    "pass_rate_pct": 96.4,
-    "exact_rec_rate_pct": 96.4,
-    "grounded_evidence_rate_pct": 96.4,
-    "success_grounded_rate_pct": 90.5,
-    "policy_adherence_rate_pct": 96.4,
-    "escalation_correctness_pct": 96.4,
-    "avg_latency_ms": 18437.8,
-    "p95_latency_ms": 39180.0,
-    "avg_llm_calls": 3.3,
-    "avg_tool_calls": 4.5,
+    "passed_evaluations": 20,
+    "pass_rate_pct": 71.4,
+    "exact_rec_rate_pct": 71.4,
+    "grounded_evidence_rate_pct": 100.0,
+    "success_grounded_rate_pct": 72.5,
+    "policy_adherence_rate_pct": 100.0,
+    "escalation_correctness_pct": 100.0,
+    "avg_latency_ms": 9107.4,
+    "p95_latency_ms": 15319.6,
+    "avg_llm_calls": 3.5,
+    "avg_tool_calls": 4.6,
     "category_breakdown": {
       "incomplete_or_ambiguous": {
         "passed": 4,
@@ -925,9 +925,9 @@
         "pass_rate": 100.0
       },
       "existing_tool_overlap": {
-        "passed": 4,
+        "passed": 3,
         "total": 4,
-        "pass_rate": 100.0
+        "pass_rate": 75.0
       },
       "conflicting_or_expired_vendor": {
         "passed": 3,
@@ -935,9 +935,9 @@
         "pass_rate": 100.0
       },
       "security_and_financial_boundaries": {
-        "passed": 8,
+        "passed": 4,
         "total": 8,
-        "pass_rate": 100.0
+        "pass_rate": 50.0
       },
       "prompt_injection": {
         "passed": 3,
@@ -950,29 +950,131 @@
         "pass_rate": 100.0
       },
       "clean_happy_path": {
-        "passed": 2,
+        "passed": 0,
         "total": 3,
-        "pass_rate": 66.7
+        "pass_rate": 0.0
       }
     },
-    "infrastructure_errors": [
+    "infrastructure_errors": [],
+    "infrastructure_error_count": 0,
+    "real_failing_cases": [
       {
-        "case_id": "TC-28",
-        "title": "Routine team knowledge management seats within budget ($5,000)",
-        "errors": [
-          "Gemini API infrastructure failure after 2 retries (ClientError): 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 15, model: gemini-3.1-flash-lite\\nPlease retry in 54.632758251s.', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_content_free_tier_requests', 'quotaId': 'GenerateRequestsPerMinutePerProjectPerModel-FreeTier', 'quotaDimensions': {'location': 'global', 'model': 'gemini-3.1-flash-lite'}, 'quotaValue': '15'}]}, {'@type': 'type.googleapis.com/google.rpc.RetryInfo', 'retryDelay': '54s'}]}}"
+        "case_id": "TC-05",
+        "title": "Direct overlap with existing company-wide e-signature tool",
+        "failures": [
+          "Recommendation mismatch: got 'escalate_to_human', expected one of ['use_existing_tool', 'approve_to_proceed']"
         ]
-      }
-    ],
-    "infrastructure_error_count": 1,
-    "real_failing_cases": [],
-    "real_failure_count": 0,
-    "failing_cases": [
+      },
+      {
+        "case_id": "TC-12",
+        "title": "Tier 1 financial boundary exact at $1,000.00",
+        "failures": [
+          "Recommendation mismatch: got 'escalate_to_human', expected one of ['approve_to_proceed', 'use_existing_tool']"
+        ]
+      },
+      {
+        "case_id": "TC-13",
+        "title": "Tier 2 financial boundary just over $1,000.00 ($1,000.01)",
+        "failures": [
+          "Recommendation mismatch: got 'escalate_to_human', expected one of ['approve_to_proceed', 'use_existing_tool']"
+        ]
+      },
+      {
+        "case_id": "TC-14",
+        "title": "Tier 2 financial boundary exact at $10,000.00",
+        "failures": [
+          "Recommendation mismatch: got 'escalate_to_human', expected one of ['approve_to_proceed', 'use_existing_tool']"
+        ]
+      },
+      {
+        "case_id": "TC-15",
+        "title": "Tier 3 financial boundary just over $10,000.00 ($10,000.01)",
+        "failures": [
+          "Recommendation mismatch: got 'escalate_to_human', expected one of ['approve_to_proceed', 'use_existing_tool']"
+        ]
+      },
+      {
+        "case_id": "TC-26",
+        "title": "Low-value standard e-signature add-on ($800) within budget",
+        "failures": [
+          "Recommendation mismatch: got 'escalate_to_human', expected one of ['approve_to_proceed', 'use_existing_tool']",
+          "Unexpected risk flags raised: ['vendor_risk_unavailable']"
+        ]
+      },
+      {
+        "case_id": "TC-27",
+        "title": "Annual professional services training pack ($950) with no data access",
+        "failures": [
+          "Recommendation mismatch: got 'escalate_to_human', expected one of ['approve_to_proceed']",
+          "Unexpected risk flags raised: ['security_review_required']"
+        ]
+      },
       {
         "case_id": "TC-28",
         "title": "Routine team knowledge management seats within budget ($5,000)",
         "failures": [
-          "Infrastructure Error: Gemini API infrastructure failure after 2 retries (ClientError): 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 15, model: gemini-3.1-flash-lite\\nPlease retry in 54.632758251s.', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_content_free_tier_requests', 'quotaId': 'GenerateRequestsPerMinutePerProjectPerModel-FreeTier', 'quotaDimensions': {'location': 'global', 'model': 'gemini-3.1-flash-lite'}, 'quotaValue': '15'}]}, {'@type': 'type.googleapis.com/google.rpc.RetryInfo', 'retryDelay': '54s'}]}}"
+          "Recommendation mismatch: got 'escalate_to_human', expected one of ['approve_to_proceed', 'use_existing_tool']"
+        ]
+      }
+    ],
+    "real_failure_count": 8,
+    "failing_cases": [
+      {
+        "case_id": "TC-05",
+        "title": "Direct overlap with existing company-wide e-signature tool",
+        "failures": [
+          "Recommendation mismatch: got 'escalate_to_human', expected one of ['use_existing_tool', 'approve_to_proceed']"
+        ]
+      },
+      {
+        "case_id": "TC-12",
+        "title": "Tier 1 financial boundary exact at $1,000.00",
+        "failures": [
+          "Recommendation mismatch: got 'escalate_to_human', expected one of ['approve_to_proceed', 'use_existing_tool']"
+        ]
+      },
+      {
+        "case_id": "TC-13",
+        "title": "Tier 2 financial boundary just over $1,000.00 ($1,000.01)",
+        "failures": [
+          "Recommendation mismatch: got 'escalate_to_human', expected one of ['approve_to_proceed', 'use_existing_tool']"
+        ]
+      },
+      {
+        "case_id": "TC-14",
+        "title": "Tier 2 financial boundary exact at $10,000.00",
+        "failures": [
+          "Recommendation mismatch: got 'escalate_to_human', expected one of ['approve_to_proceed', 'use_existing_tool']"
+        ]
+      },
+      {
+        "case_id": "TC-15",
+        "title": "Tier 3 financial boundary just over $10,000.00 ($10,000.01)",
+        "failures": [
+          "Recommendation mismatch: got 'escalate_to_human', expected one of ['approve_to_proceed', 'use_existing_tool']"
+        ]
+      },
+      {
+        "case_id": "TC-26",
+        "title": "Low-value standard e-signature add-on ($800) within budget",
+        "failures": [
+          "Recommendation mismatch: got 'escalate_to_human', expected one of ['approve_to_proceed', 'use_existing_tool']",
+          "Unexpected risk flags raised: ['vendor_risk_unavailable']"
+        ]
+      },
+      {
+        "case_id": "TC-27",
+        "title": "Annual professional services training pack ($950) with no data access",
+        "failures": [
+          "Recommendation mismatch: got 'escalate_to_human', expected one of ['approve_to_proceed']",
+          "Unexpected risk flags raised: ['security_review_required']"
+        ]
+      },
+      {
+        "case_id": "TC-28",
+        "title": "Routine team knowledge management seats within budget ($5,000)",
+        "failures": [
+          "Recommendation mismatch: got 'escalate_to_human', expected one of ['approve_to_proceed', 'use_existing_tool']"
         ]
       }
     ],
@@ -984,7 +1086,7 @@
         "all_passed": true,
         "passed_runs": 1,
         "total_runs": 1,
-        "avg_latency_ms": 23074.1,
+        "avg_latency_ms": 7064.8,
         "runs": [
           {
             "case_id": "TC-01",
@@ -993,12 +1095,12 @@
             "passed": true,
             "rec_match": true,
             "grounded_ratio": 1.0,
-            "success_grounded_ratio": 0.75,
+            "success_grounded_ratio": 0.5,
             "policy_adherence": true,
             "risk_flags_ok": true,
             "human_escalation_ok": true,
             "failures": [],
-            "latency_ms": 23074.1,
+            "latency_ms": 7064.8,
             "llm_calls": 4,
             "tool_calls": 4,
             "run_index": 1,
@@ -1014,7 +1116,7 @@
         "all_passed": true,
         "passed_runs": 1,
         "total_runs": 1,
-        "avg_latency_ms": 68811.5,
+        "avg_latency_ms": 4104.5,
         "runs": [
           {
             "case_id": "TC-02",
@@ -1023,14 +1125,14 @@
             "passed": true,
             "rec_match": true,
             "grounded_ratio": 1.0,
-            "success_grounded_ratio": 1.0,
+            "success_grounded_ratio": 0.75,
             "policy_adherence": true,
             "risk_flags_ok": true,
             "human_escalation_ok": true,
             "failures": [],
-            "latency_ms": 68811.5,
+            "latency_ms": 4104.5,
             "llm_calls": 4,
-            "tool_calls": 5,
+            "tool_calls": 4,
             "run_index": 1,
             "infrastructure_error": false,
             "error_message": null
@@ -1044,7 +1146,7 @@
         "all_passed": true,
         "passed_runs": 1,
         "total_runs": 1,
-        "avg_latency_ms": 30890.0,
+        "avg_latency_ms": 4248.1,
         "runs": [
           {
             "case_id": "TC-03",
@@ -1053,12 +1155,12 @@
             "passed": true,
             "rec_match": true,
             "grounded_ratio": 1.0,
-            "success_grounded_ratio": 0.8,
+            "success_grounded_ratio": 0.6,
             "policy_adherence": true,
             "risk_flags_ok": true,
             "human_escalation_ok": true,
             "failures": [],
-            "latency_ms": 30890.0,
+            "latency_ms": 4248.1,
             "llm_calls": 4,
             "tool_calls": 5,
             "run_index": 1,
@@ -1074,7 +1176,7 @@
         "all_passed": true,
         "passed_runs": 1,
         "total_runs": 1,
-        "avg_latency_ms": 27688.0,
+        "avg_latency_ms": 4364.5,
         "runs": [
           {
             "case_id": "TC-04",
@@ -1083,12 +1185,12 @@
             "passed": true,
             "rec_match": true,
             "grounded_ratio": 1.0,
-            "success_grounded_ratio": 0.75,
+            "success_grounded_ratio": 0.5,
             "policy_adherence": true,
             "risk_flags_ok": true,
             "human_escalation_ok": true,
             "failures": [],
-            "latency_ms": 27688.0,
+            "latency_ms": 4364.5,
             "llm_calls": 3,
             "tool_calls": 5,
             "run_index": 1,
@@ -1101,24 +1203,26 @@
         "case_id": "TC-05",
         "title": "Direct overlap with existing company-wide e-signature tool",
         "category": "existing_tool_overlap",
-        "all_passed": true,
-        "passed_runs": 1,
+        "all_passed": false,
+        "passed_runs": 0,
         "total_runs": 1,
-        "avg_latency_ms": 17997.4,
+        "avg_latency_ms": 6281.6,
         "runs": [
           {
             "case_id": "TC-05",
             "category": "existing_tool_overlap",
             "title": "Direct overlap with existing company-wide e-signature tool",
-            "passed": true,
-            "rec_match": true,
+            "passed": false,
+            "rec_match": false,
             "grounded_ratio": 1.0,
-            "success_grounded_ratio": 1.0,
+            "success_grounded_ratio": 0.75,
             "policy_adherence": true,
             "risk_flags_ok": true,
             "human_escalation_ok": true,
-            "failures": [],
-            "latency_ms": 17997.4,
+            "failures": [
+              "Recommendation mismatch: got 'escalate_to_human', expected one of ['use_existing_tool', 'approve_to_proceed']"
+            ],
+            "latency_ms": 6281.6,
             "llm_calls": 3,
             "tool_calls": 5,
             "run_index": 1,
@@ -1134,7 +1238,7 @@
         "all_passed": true,
         "passed_runs": 1,
         "total_runs": 1,
-        "avg_latency_ms": 24154.8,
+        "avg_latency_ms": 5798.5,
         "runs": [
           {
             "case_id": "TC-06",
@@ -1143,12 +1247,12 @@
             "passed": true,
             "rec_match": true,
             "grounded_ratio": 1.0,
-            "success_grounded_ratio": 1.0,
+            "success_grounded_ratio": 0.75,
             "policy_adherence": true,
             "risk_flags_ok": true,
             "human_escalation_ok": true,
             "failures": [],
-            "latency_ms": 24154.8,
+            "latency_ms": 5798.5,
             "llm_calls": 3,
             "tool_calls": 5,
             "run_index": 1,
@@ -1164,7 +1268,7 @@
         "all_passed": true,
         "passed_runs": 1,
         "total_runs": 1,
-        "avg_latency_ms": 24536.4,
+        "avg_latency_ms": 6116.2,
         "runs": [
           {
             "case_id": "TC-07",
@@ -1173,12 +1277,12 @@
             "passed": true,
             "rec_match": true,
             "grounded_ratio": 1.0,
-            "success_grounded_ratio": 1.0,
+            "success_grounded_ratio": 0.75,
             "policy_adherence": true,
             "risk_flags_ok": true,
             "human_escalation_ok": true,
             "failures": [],
-            "latency_ms": 24536.4,
+            "latency_ms": 6116.2,
             "llm_calls": 3,
             "tool_calls": 5,
             "run_index": 1,
@@ -1194,7 +1298,7 @@
         "all_passed": true,
         "passed_runs": 1,
         "total_runs": 1,
-        "avg_latency_ms": 24717.5,
+        "avg_latency_ms": 5132.9,
         "runs": [
           {
             "case_id": "TC-08",
@@ -1203,12 +1307,12 @@
             "passed": true,
             "rec_match": true,
             "grounded_ratio": 1.0,
-            "success_grounded_ratio": 1.0,
+            "success_grounded_ratio": 0.75,
             "policy_adherence": true,
             "risk_flags_ok": true,
             "human_escalation_ok": true,
             "failures": [],
-            "latency_ms": 24717.5,
+            "latency_ms": 5132.9,
             "llm_calls": 3,
             "tool_calls": 5,
             "run_index": 1,
@@ -1224,7 +1328,7 @@
         "all_passed": true,
         "passed_runs": 1,
         "total_runs": 1,
-        "avg_latency_ms": 26865.8,
+        "avg_latency_ms": 9498.6,
         "runs": [
           {
             "case_id": "TC-09",
@@ -1238,7 +1342,7 @@
             "risk_flags_ok": true,
             "human_escalation_ok": true,
             "failures": [],
-            "latency_ms": 26865.8,
+            "latency_ms": 9498.6,
             "llm_calls": 3,
             "tool_calls": 5,
             "run_index": 1,
@@ -1254,7 +1358,7 @@
         "all_passed": true,
         "passed_runs": 1,
         "total_runs": 1,
-        "avg_latency_ms": 39320.6,
+        "avg_latency_ms": 12050.5,
         "runs": [
           {
             "case_id": "TC-10",
@@ -1263,12 +1367,12 @@
             "passed": true,
             "rec_match": true,
             "grounded_ratio": 1.0,
-            "success_grounded_ratio": 1.0,
+            "success_grounded_ratio": 0.75,
             "policy_adherence": true,
             "risk_flags_ok": true,
             "human_escalation_ok": true,
             "failures": [],
-            "latency_ms": 39320.6,
+            "latency_ms": 12050.5,
             "llm_calls": 4,
             "tool_calls": 4,
             "run_index": 1,
@@ -1284,7 +1388,7 @@
         "all_passed": true,
         "passed_runs": 1,
         "total_runs": 1,
-        "avg_latency_ms": 21359.9,
+        "avg_latency_ms": 8298.7,
         "runs": [
           {
             "case_id": "TC-11",
@@ -1293,12 +1397,12 @@
             "passed": true,
             "rec_match": true,
             "grounded_ratio": 1.0,
-            "success_grounded_ratio": 1.0,
+            "success_grounded_ratio": 0.75,
             "policy_adherence": true,
             "risk_flags_ok": true,
             "human_escalation_ok": true,
             "failures": [],
-            "latency_ms": 21359.9,
+            "latency_ms": 8298.7,
             "llm_calls": 3,
             "tool_calls": 5,
             "run_index": 1,
@@ -1311,24 +1415,26 @@
         "case_id": "TC-12",
         "title": "Tier 1 financial boundary exact at $1,000.00",
         "category": "security_and_financial_boundaries",
-        "all_passed": true,
-        "passed_runs": 1,
+        "all_passed": false,
+        "passed_runs": 0,
         "total_runs": 1,
-        "avg_latency_ms": 27749.6,
+        "avg_latency_ms": 10255.2,
         "runs": [
           {
             "case_id": "TC-12",
             "category": "security_and_financial_boundaries",
             "title": "Tier 1 financial boundary exact at $1,000.00",
-            "passed": true,
-            "rec_match": true,
+            "passed": false,
+            "rec_match": false,
             "grounded_ratio": 1.0,
-            "success_grounded_ratio": 1.0,
+            "success_grounded_ratio": 0.75,
             "policy_adherence": true,
             "risk_flags_ok": true,
             "human_escalation_ok": true,
-            "failures": [],
-            "latency_ms": 27749.6,
+            "failures": [
+              "Recommendation mismatch: got 'escalate_to_human', expected one of ['approve_to_proceed', 'use_existing_tool']"
+            ],
+            "latency_ms": 10255.2,
             "llm_calls": 4,
             "tool_calls": 4,
             "run_index": 1,
@@ -1341,24 +1447,26 @@
         "case_id": "TC-13",
         "title": "Tier 2 financial boundary just over $1,000.00 ($1,000.01)",
         "category": "security_and_financial_boundaries",
-        "all_passed": true,
-        "passed_runs": 1,
+        "all_passed": false,
+        "passed_runs": 0,
         "total_runs": 1,
-        "avg_latency_ms": 27534.4,
+        "avg_latency_ms": 5908.9,
         "runs": [
           {
             "case_id": "TC-13",
             "category": "security_and_financial_boundaries",
             "title": "Tier 2 financial boundary just over $1,000.00 ($1,000.01)",
-            "passed": true,
-            "rec_match": true,
+            "passed": false,
+            "rec_match": false,
             "grounded_ratio": 1.0,
-            "success_grounded_ratio": 1.0,
+            "success_grounded_ratio": 0.75,
             "policy_adherence": true,
             "risk_flags_ok": true,
             "human_escalation_ok": true,
-            "failures": [],
-            "latency_ms": 27534.4,
+            "failures": [
+              "Recommendation mismatch: got 'escalate_to_human', expected one of ['approve_to_proceed', 'use_existing_tool']"
+            ],
+            "latency_ms": 5908.9,
             "llm_calls": 4,
             "tool_calls": 4,
             "run_index": 1,
@@ -1371,24 +1479,26 @@
         "case_id": "TC-14",
         "title": "Tier 2 financial boundary exact at $10,000.00",
         "category": "security_and_financial_boundaries",
-        "all_passed": true,
-        "passed_runs": 1,
+        "all_passed": false,
+        "passed_runs": 0,
         "total_runs": 1,
-        "avg_latency_ms": 38918.9,
+        "avg_latency_ms": 5941.3,
         "runs": [
           {
             "case_id": "TC-14",
             "category": "security_and_financial_boundaries",
             "title": "Tier 2 financial boundary exact at $10,000.00",
-            "passed": true,
-            "rec_match": true,
+            "passed": false,
+            "rec_match": false,
             "grounded_ratio": 1.0,
-            "success_grounded_ratio": 1.0,
+            "success_grounded_ratio": 0.75,
             "policy_adherence": true,
             "risk_flags_ok": true,
             "human_escalation_ok": true,
-            "failures": [],
-            "latency_ms": 38918.9,
+            "failures": [
+              "Recommendation mismatch: got 'escalate_to_human', expected one of ['approve_to_proceed', 'use_existing_tool']"
+            ],
+            "latency_ms": 5941.3,
             "llm_calls": 4,
             "tool_calls": 4,
             "run_index": 1,
@@ -1401,24 +1511,26 @@
         "case_id": "TC-15",
         "title": "Tier 3 financial boundary just over $10,000.00 ($10,000.01)",
         "category": "security_and_financial_boundaries",
-        "all_passed": true,
-        "passed_runs": 1,
+        "all_passed": false,
+        "passed_runs": 0,
         "total_runs": 1,
-        "avg_latency_ms": 24076.7,
+        "avg_latency_ms": 7165.6,
         "runs": [
           {
             "case_id": "TC-15",
             "category": "security_and_financial_boundaries",
             "title": "Tier 3 financial boundary just over $10,000.00 ($10,000.01)",
-            "passed": true,
-            "rec_match": true,
+            "passed": false,
+            "rec_match": false,
             "grounded_ratio": 1.0,
-            "success_grounded_ratio": 1.0,
+            "success_grounded_ratio": 0.75,
             "policy_adherence": true,
             "risk_flags_ok": true,
             "human_escalation_ok": true,
-            "failures": [],
-            "latency_ms": 24076.7,
+            "failures": [
+              "Recommendation mismatch: got 'escalate_to_human', expected one of ['approve_to_proceed', 'use_existing_tool']"
+            ],
+            "latency_ms": 7165.6,
             "llm_calls": 4,
             "tool_calls": 4,
             "run_index": 1,
@@ -1434,7 +1546,7 @@
         "all_passed": true,
         "passed_runs": 1,
         "total_runs": 1,
-        "avg_latency_ms": 9592.2,
+        "avg_latency_ms": 11475.7,
         "runs": [
           {
             "case_id": "TC-16",
@@ -1443,12 +1555,12 @@
             "passed": true,
             "rec_match": true,
             "grounded_ratio": 1.0,
-            "success_grounded_ratio": 1.0,
+            "success_grounded_ratio": 0.75,
             "policy_adherence": true,
             "risk_flags_ok": true,
             "human_escalation_ok": true,
             "failures": [],
-            "latency_ms": 9592.2,
+            "latency_ms": 11475.7,
             "llm_calls": 4,
             "tool_calls": 4,
             "run_index": 1,
@@ -1464,7 +1576,7 @@
         "all_passed": true,
         "passed_runs": 1,
         "total_runs": 1,
-        "avg_latency_ms": 3289.7,
+        "avg_latency_ms": 9175.1,
         "runs": [
           {
             "case_id": "TC-17",
@@ -1473,12 +1585,12 @@
             "passed": true,
             "rec_match": true,
             "grounded_ratio": 1.0,
-            "success_grounded_ratio": 1.0,
+            "success_grounded_ratio": 0.75,
             "policy_adherence": true,
             "risk_flags_ok": true,
             "human_escalation_ok": true,
             "failures": [],
-            "latency_ms": 3289.7,
+            "latency_ms": 9175.1,
             "llm_calls": 3,
             "tool_calls": 5,
             "run_index": 1,
@@ -1494,7 +1606,7 @@
         "all_passed": true,
         "passed_runs": 1,
         "total_runs": 1,
-        "avg_latency_ms": 3630.4,
+        "avg_latency_ms": 7861.2,
         "runs": [
           {
             "case_id": "TC-18",
@@ -1508,7 +1620,7 @@
             "risk_flags_ok": true,
             "human_escalation_ok": true,
             "failures": [],
-            "latency_ms": 3630.4,
+            "latency_ms": 7861.2,
             "llm_calls": 3,
             "tool_calls": 5,
             "run_index": 1,
@@ -1524,7 +1636,7 @@
         "all_passed": true,
         "passed_runs": 1,
         "total_runs": 1,
-        "avg_latency_ms": 2892.2,
+        "avg_latency_ms": 10267.2,
         "runs": [
           {
             "case_id": "TC-19",
@@ -1533,12 +1645,12 @@
             "passed": true,
             "rec_match": true,
             "grounded_ratio": 1.0,
-            "success_grounded_ratio": 1.0,
+            "success_grounded_ratio": 0.75,
             "policy_adherence": true,
             "risk_flags_ok": true,
             "human_escalation_ok": true,
             "failures": [],
-            "latency_ms": 2892.2,
+            "latency_ms": 10267.2,
             "llm_calls": 3,
             "tool_calls": 5,
             "run_index": 1,
@@ -1554,7 +1666,7 @@
         "all_passed": true,
         "passed_runs": 1,
         "total_runs": 1,
-        "avg_latency_ms": 3652.6,
+        "avg_latency_ms": 9915.0,
         "runs": [
           {
             "case_id": "TC-20",
@@ -1563,12 +1675,12 @@
             "passed": true,
             "rec_match": true,
             "grounded_ratio": 1.0,
-            "success_grounded_ratio": 0.75,
+            "success_grounded_ratio": 0.5,
             "policy_adherence": true,
             "risk_flags_ok": true,
             "human_escalation_ok": true,
             "failures": [],
-            "latency_ms": 3652.6,
+            "latency_ms": 9915.0,
             "llm_calls": 3,
             "tool_calls": 5,
             "run_index": 1,
@@ -1584,7 +1696,7 @@
         "all_passed": true,
         "passed_runs": 1,
         "total_runs": 1,
-        "avg_latency_ms": 4664.3,
+        "avg_latency_ms": 13108.5,
         "runs": [
           {
             "case_id": "TC-21",
@@ -1593,12 +1705,12 @@
             "passed": true,
             "rec_match": true,
             "grounded_ratio": 1.0,
-            "success_grounded_ratio": 0.8,
+            "success_grounded_ratio": 0.6,
             "policy_adherence": true,
             "risk_flags_ok": true,
             "human_escalation_ok": true,
             "failures": [],
-            "latency_ms": 4664.3,
+            "latency_ms": 13108.5,
             "llm_calls": 4,
             "tool_calls": 5,
             "run_index": 1,
@@ -1614,7 +1726,7 @@
         "all_passed": true,
         "passed_runs": 1,
         "total_runs": 1,
-        "avg_latency_ms": 5036.8,
+        "avg_latency_ms": 14420.0,
         "runs": [
           {
             "case_id": "TC-22",
@@ -1623,14 +1735,14 @@
             "passed": true,
             "rec_match": true,
             "grounded_ratio": 1.0,
-            "success_grounded_ratio": 1.0,
+            "success_grounded_ratio": 0.6,
             "policy_adherence": true,
             "risk_flags_ok": true,
             "human_escalation_ok": true,
             "failures": [],
-            "latency_ms": 5036.8,
+            "latency_ms": 14420.0,
             "llm_calls": 4,
-            "tool_calls": 4,
+            "tool_calls": 5,
             "run_index": 1,
             "infrastructure_error": false,
             "error_message": null
@@ -1644,7 +1756,7 @@
         "all_passed": true,
         "passed_runs": 1,
         "total_runs": 1,
-        "avg_latency_ms": 3364.6,
+        "avg_latency_ms": 21201.3,
         "runs": [
           {
             "case_id": "TC-23",
@@ -1658,7 +1770,7 @@
             "risk_flags_ok": true,
             "human_escalation_ok": true,
             "failures": [],
-            "latency_ms": 3364.6,
+            "latency_ms": 21201.3,
             "llm_calls": 3,
             "tool_calls": 5,
             "run_index": 1,
@@ -1674,7 +1786,7 @@
         "all_passed": true,
         "passed_runs": 1,
         "total_runs": 1,
-        "avg_latency_ms": 3596.1,
+        "avg_latency_ms": 9586.7,
         "runs": [
           {
             "case_id": "TC-24",
@@ -1688,7 +1800,7 @@
             "risk_flags_ok": true,
             "human_escalation_ok": true,
             "failures": [],
-            "latency_ms": 3596.1,
+            "latency_ms": 9586.7,
             "llm_calls": 3,
             "tool_calls": 5,
             "run_index": 1,
@@ -1704,7 +1816,7 @@
         "all_passed": true,
         "passed_runs": 1,
         "total_runs": 1,
-        "avg_latency_ms": 4186.5,
+        "avg_latency_ms": 14898.7,
         "runs": [
           {
             "case_id": "TC-25",
@@ -1713,12 +1825,12 @@
             "passed": true,
             "rec_match": true,
             "grounded_ratio": 1.0,
-            "success_grounded_ratio": 1.0,
+            "success_grounded_ratio": 0.75,
             "policy_adherence": true,
             "risk_flags_ok": true,
             "human_escalation_ok": true,
             "failures": [],
-            "latency_ms": 4186.5,
+            "latency_ms": 14898.7,
             "llm_calls": 4,
             "tool_calls": 4,
             "run_index": 1,
@@ -1731,24 +1843,27 @@
         "case_id": "TC-26",
         "title": "Low-value standard e-signature add-on ($800) within budget",
         "category": "clean_happy_path",
-        "all_passed": true,
-        "passed_runs": 1,
+        "all_passed": false,
+        "passed_runs": 0,
         "total_runs": 1,
-        "avg_latency_ms": 3265.0,
+        "avg_latency_ms": 9375.6,
         "runs": [
           {
             "case_id": "TC-26",
             "category": "clean_happy_path",
             "title": "Low-value standard e-signature add-on ($800) within budget",
-            "passed": true,
-            "rec_match": true,
+            "passed": false,
+            "rec_match": false,
             "grounded_ratio": 1.0,
-            "success_grounded_ratio": 1.0,
+            "success_grounded_ratio": 0.75,
             "policy_adherence": true,
-            "risk_flags_ok": true,
+            "risk_flags_ok": false,
             "human_escalation_ok": true,
-            "failures": [],
-            "latency_ms": 3265.0,
+            "failures": [
+              "Recommendation mismatch: got 'escalate_to_human', expected one of ['approve_to_proceed', 'use_existing_tool']",
+              "Unexpected risk flags raised: ['vendor_risk_unavailable']"
+            ],
+            "latency_ms": 9375.6,
             "llm_calls": 3,
             "tool_calls": 5,
             "run_index": 1,
@@ -1761,24 +1876,27 @@
         "case_id": "TC-27",
         "title": "Annual professional services training pack ($950) with no data access",
         "category": "clean_happy_path",
-        "all_passed": true,
-        "passed_runs": 1,
+        "all_passed": false,
+        "passed_runs": 0,
         "total_runs": 1,
-        "avg_latency_ms": 3648.7,
+        "avg_latency_ms": 5946.0,
         "runs": [
           {
             "case_id": "TC-27",
             "category": "clean_happy_path",
             "title": "Annual professional services training pack ($950) with no data access",
-            "passed": true,
-            "rec_match": true,
+            "passed": false,
+            "rec_match": false,
             "grounded_ratio": 1.0,
-            "success_grounded_ratio": 1.0,
+            "success_grounded_ratio": 0.75,
             "policy_adherence": true,
-            "risk_flags_ok": true,
+            "risk_flags_ok": false,
             "human_escalation_ok": true,
-            "failures": [],
-            "latency_ms": 3648.7,
+            "failures": [
+              "Recommendation mismatch: got 'escalate_to_human', expected one of ['approve_to_proceed']",
+              "Unexpected risk flags raised: ['security_review_required']"
+            ],
+            "latency_ms": 5946.0,
             "llm_calls": 3,
             "tool_calls": 5,
             "run_index": 1,
@@ -1794,29 +1912,28 @@
         "all_passed": false,
         "passed_runs": 0,
         "total_runs": 1,
-        "avg_latency_ms": 17744.2,
+        "avg_latency_ms": 15546.3,
         "runs": [
           {
             "case_id": "TC-28",
             "category": "clean_happy_path",
             "title": "Routine team knowledge management seats within budget ($5,000)",
             "passed": false,
-            "infrastructure_error": true,
-            "error_type": "infrastructure_timeout_or_ratelimit",
-            "error_message": "Gemini API infrastructure failure after 2 retries (ClientError): 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 15, model: gemini-3.1-flash-lite\\nPlease retry in 54.632758251s.', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_content_free_tier_requests', 'quotaId': 'GenerateRequestsPerMinutePerProjectPerModel-FreeTier', 'quotaDimensions': {'location': 'global', 'model': 'gemini-3.1-flash-lite'}, 'quotaValue': '15'}]}, {'@type': 'type.googleapis.com/google.rpc.RetryInfo', 'retryDelay': '54s'}]}}",
-            "latency_ms": 17744.2,
-            "run_index": 1,
-            "failures": [
-              "Infrastructure Error: Gemini API infrastructure failure after 2 retries (ClientError): 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 15, model: gemini-3.1-flash-lite\\nPlease retry in 54.632758251s.', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_content_free_tier_requests', 'quotaId': 'GenerateRequestsPerMinutePerProjectPerModel-FreeTier', 'quotaDimensions': {'location': 'global', 'model': 'gemini-3.1-flash-lite'}, 'quotaValue': '15'}]}, {'@type': 'type.googleapis.com/google.rpc.RetryInfo', 'retryDelay': '54s'}]}}"
-            ],
             "rec_match": false,
-            "grounded_ratio": 0.0,
-            "success_grounded_ratio": 0.0,
-            "policy_adherence": false,
-            "risk_flags_ok": false,
-            "human_escalation_ok": false,
-            "llm_calls": 0,
-            "tool_calls": 0
+            "grounded_ratio": 1.0,
+            "success_grounded_ratio": 0.75,
+            "policy_adherence": true,
+            "risk_flags_ok": true,
+            "human_escalation_ok": true,
+            "failures": [
+              "Recommendation mismatch: got 'escalate_to_human', expected one of ['approve_to_proceed', 'use_existing_tool']"
+            ],
+            "latency_ms": 15546.3,
+            "llm_calls": 4,
+            "tool_calls": 4,
+            "run_index": 1,
+            "infrastructure_error": false,
+            "error_message": null
           }
         ]
       }

@@ -158,21 +158,29 @@ Regardless of LLM mode (live Gemini or deterministic mock), the candidate JSON i
 
 ## 7. Measured Benchmark Comparison (Live Gemini 3.1 Flash Lite)
 
-All figures represent strictly measured numbers from the 28-case evaluation benchmark (`eval/test_set.json`):
+All figures represent strictly measured numbers from the 28-case evaluation benchmark (`eval/test_set.json`) and 6-case held-out set (`eval/held_out_set.json`):
 
 | Metric | Architecture A (Single Agent) | Architecture B (Staged 2-Agent) | Delta / Assessment |
 |---|:---:|:---:|---|
-| **Primary Pass Rate** | **27/28 (96.4%)** | **28/28 (100.0%)** | Arch A encountered 1 rate limit |
-| **Real Logic / Policy Failures** | **0 / 28 (0.0%)** | **0 / 28 (0.0%)** | Zero policy violations |
-| **Infrastructure Errors** | **1 (429 Rate Limit)** | **0** | Arch B avoided 15 RPM quota limit |
-| **Grounded Evidence Rate (Executed Tools)** | **96.4%** | **100.0%** | 100% of claims cite executed tool runs |
-| **Successful-Payload Evidence Rate** | **90.5%** | **95.5%** | Remainder (~4.5%) are simulated outages |
-| **Policy Rule Adherence** | **96.4%** | **100.0%** | Exact match to deterministic code |
-| **Escalation Correctness** | **96.4%** | **100.0%** | Precision=1.0, Recall=1.0 |
-| **Average Latency (Live)** | **18,437.8 ms** | **5,370.8 ms** | Arch B is 70.9% faster |
-| **P95 Latency (Live)** | **39,180.0 ms** | **9,451.9 ms** | Arch B tail latency is 4.1x lower |
-| **Average LLM Calls / Req** | **3.3 calls** | **2.0 calls** | Arch B eliminates dynamic planning hops |
-| **Average Tool Calls / Req** | **4.5 calls** | **5.5 calls** | Comparable tool coverage depth |
+| **Primary Pass Rate** | **20/28 (71.4%)** | **28/28 (100.0%)** | Arch B achieved full recommendation parity |
+| **Real Logic / Policy Failures** | **8 / 28 (28.6%)** | **0 / 28 (0.0%)** | Arch A over-escalated clean happy paths |
+| **Infrastructure Errors** | **0** | **0** | All calls completed within timeout/retry limits |
+| **Exact Recommendation Match** | **71.4%** | **100.0%** | Arch B strictly matched expected taxonomy |
+| **Grounded Evidence Rate (Executed Tools)** | **100.0%** | **100.0%** | 100% of claims cite executed tool runs |
+| **Successful-Payload Evidence Rate** | **72.5%** | **95.5%** | Arch B cleanly handles service outages |
+| **Policy Rule Adherence** | **100.0%** | **100.0%** | Exact match to deterministic code rules |
+| **Escalation Correctness** | **100.0%** | **100.0%** | Precision=1.0, Recall=1.0 on mandatory review |
+| **Average Latency (Clean Live)** | **9,107.4 ms** | **5,370.8 ms** | Arch B is 41.0% faster (see Latency Caveat below) |
+| **P95 Latency (Clean Live)** | **15,319.6 ms** | **9,451.9 ms** | Arch B tail latency is 1.6x lower |
+| **Average LLM Calls / Req** | **3.5 calls** | **2.0 calls** | Arch B eliminates dynamic planning hops |
+| **Average Tool Calls / Req** | **4.6 calls** | **5.5 calls** | Full tool coverage depth across both |
+| **Held-Out Set Pass Rate (6 cases)** | **5/6 (83.3%)** | **5/6 (83.3%)** | Parity; HO-04 test expectation defect |
+
+> **Latency Comparison Caveat:**  
+> In initial sequential benchmark runs, Architecture A averaged ~18.4s because it hit transient 504 gateway timeouts and 5s/10s rate-limit retry backoffs. In clean, unthrottled runs, Architecture A averages **9.1s** vs Architecture B's **5.4s**. Saying "Architecture B is 70% faster" overstates the true architectural difference: Architecture B is genuinely **~41% faster**, strictly because Agent 1 gathers evidence deterministically, reducing total LLM roundtrips from 3.5 to 2.0.
+
+> **Held-Out HO-04 Finding:**  
+> Case HO-04 ($25k Sales request) was marked as a test failure because the test expected `approve_to_proceed`. However, `department_budgets.csv` only had $20k remaining for Sales software. Both systems correctly flagged `budget_insufficient`. The test expectation was flawed, and both systems correctly protected against budget overrun.
 
 ---
 
